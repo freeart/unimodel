@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="http://code.jquery.com/jquery-1.6.1.js" type="text/javascript"></script>
+	<script src="unimodel.js" type="text/javascript"></script>
+	<style type="text/css">
+
+	</style>
+</head>
+<body>
+<ul id="view"></ul>
+<script type="text/javascript">
+	$(document).ready(function () {
+		var $view = $('#view');
+		var model = new Unimodel({
+			override:{
+				'state.lock': function(value, field, action) {
+					var readonly = (action == 'get');
+					if (!readonly) {
+						console.log(field + "- action '" + action + "' is locked, new value '" + value + "' rejected");
+					}
+					return readonly;
+				},
+				'person': function(value, field, action) {
+					var me = this;
+					if (action == 'merge') {
+						var result = $.Deferred();
+						setTimeout(function() {
+							result.resolve({sex: '---'});
+						}, 3000);
+						return result;
+					} else {
+						return true;
+					}
+				}
+			},
+			data: {
+				counts: {
+					total: 50,
+					avrg: 10
+				},
+				welcome: 'hello',
+				person: {
+					name: 'paul',
+					tmp: '111'
+				},
+				groups: [
+					{id: 1},
+					{id: 2}
+				],
+				state: {
+					lock: 'readonly'
+				}
+			},
+			events: {
+				'update': function(field, value, promiseData) {
+					$view.append('<li>event update: ' + field + '</li>');
+					console.log('update event: field="', field, '", value="', this.get(field), '"', promiseData !== undefined ? ' async' : '');
+				},
+				'merge': function(field, value, promiseData) {
+					$view.append('<li>event merge: ' + field + '</li>');
+					console.log('merge event: field="', field, '", value="', value, '", result="', this.get(field), '"', promiseData !== undefined ? ' async' : '');
+				},
+				'remove': function(field, value, promiseData) {
+					$view.append('<li>event remove: ' + field + '</li>');
+					console.log('remove: ' + field, '", value="', value, '"', promiseData !== undefined ? ' async' : '');
+				}
+			}
+		});
+		console.log('original model: ', $.extend(true, {}, model.get()));
+
+		model.get('state.lock');
+		console.log('get: field="state.lock", value="', model.get('state.lock'), '"');
+
+		setTimeout(function() {
+			model.set('counts.total', 100);
+			model.set({
+				'state.unlock': 'create and write access',
+				'state.lock': 'try to write'
+			});
+		}, 2000);
+
+		setTimeout(function() {
+			model.merge('welcome', ' world');
+			model.merge('state.lock', 'try to merge');
+			model.merge('counts.avrg', 7);
+			model.merge('counts.total', 2, function(oldValue, newValue) {
+				return oldValue * newValue;
+			});
+			model.merge('person', {sex: 'M'}, {});
+			model.merge('groups', {id: 3}, []);
+		}, 4000);
+
+		setTimeout(function() {
+			model.remove(['state.lock', 'groups.1', 'person.tmp']);
+		}, 6000);
+
+		setTimeout(function() {
+			model.remove('state');
+			console.log('final model: ', $.extend(true, {}, model.get()));
+		}, 8000);
+	});
+</script>
+</body>
+</html>
