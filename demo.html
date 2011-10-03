@@ -88,11 +88,19 @@
 				return oldValue * newValue;
 			});
 			model.merge('person', {sex: 'M'}, {});
-			model.merge('groups', {id: 3}, []);
+			model.merge('groups', [
+				{id: 3}
+			], []);
+			model.merge('groups', [
+				{id: 2},
+				{id: 3},
+				{id: 4},
+				{id: 5}
+			], [], 'id');
 		}, 4000);
 
 		setTimeout(function() {
-			model.remove(['state.lock', 'groups.1', 'person.tmp']);
+			model.remove(['state.lock', 'groups.4', 'person.tmp']);
 		}, 6000);
 
 		setTimeout(function() {
