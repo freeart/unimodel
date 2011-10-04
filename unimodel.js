@@ -93,13 +93,23 @@
 	}
 
 	var Unimodel = function(config) {
+		this.override = {};
+		this.silentMode = false;
+		this.data = this.data || {};
+
 		$.extend(this, config);
 
 		$.extend(this, new EventMachine(this.events));
-		this.data = this.data || {};
 	}
 
 	Unimodel.prototype = {
+		silent: function(bool) {
+			if (bool === undefined) {
+				return this.silentMode;
+			}
+			this.silentMode = bool;
+		},
+
 		get: function(field) {
 			if (!field) return this.data;
 
@@ -132,6 +142,10 @@
 		},
 
 		set: function(field, value) {
+			if (typeof value === 'undefined') {
+				return;
+			}
+
 			var result, me = this;
 
 			if (!$.isPlainObject(field)) {
@@ -157,14 +171,19 @@
 					ns(me.data, found.path);
 
 					me.get(found.path)[found.field] = value;
-
-					me.trigger('update', field, value, data);
+					if (!me.silentMode) {
+						me.trigger('update', field, value, data);
+					}
 				});
 			});
 
 		},
 
 		merge: function(field, value, mode, idProperty) {
+			if (typeof value === 'undefined') {
+				return;
+			}
+
 			var result, me = this;
 			var maybePromise = !$.isFunction(this.override[field]) || this.override[field](value, field, 'merge');
 
@@ -213,8 +232,9 @@
 				else {
 					element[found.field] += value;
 				}
-
-				me.trigger('merge', field, value, data);
+				if (!me.silentMode) {
+					me.trigger('merge', field, value, data);
+				}
 			});
 		},
 
@@ -226,7 +246,7 @@
 				fields = [];
 				fields.push(field);
 			}
-			for (var i = -1, len = fields.length; ++i < len;){
+			for (var i = -1, len = fields.length; ++i < len;) {
 				field = fields[i];
 				var maybePromise = !$.isFunction(this.override[field]) || this.override[field](undefined, field, 'remove');
 				var result;
@@ -248,9 +268,29 @@
 						value = me.get(found.path)[found.field];
 						delete me.get(found.path)[found.field];
 					}
-
-					me.trigger('remove', field, value, data);
+					if (!me.silentMode) {
+						me.trigger('remove', field, value, data);
+					}
 				});
+			}
+		},
+
+		exists: function(field) {
+			var found = getPath(field);
+
+			var element = this.get(found.path);
+
+			if ($.isArray(element) && isNumber(found.field)) {
+				return (element.length > Number(found.field));
+			} else {
+				return (found.field in element);
+			}
+		},
+
+		removeAll: function() {
+			this.data = {};
+			if (!this.silentMode) {
+				this.trigger('removeAll');
 			}
 		}
 	}
